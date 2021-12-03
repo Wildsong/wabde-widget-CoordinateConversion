@@ -463,7 +463,7 @@ define([
       var rowData = this.displayNotationsTable.getRowData(tr);
       var defaultFormatPopup = new Popup({
         titleLabel: this.nls.setDefaultFormatTitlePane,
-        width: 300,
+        width: 340,
         maxHeight: 200,
         autoHeight: true,
         content: new EditDefaultNotation(rowData.defaultFormat),

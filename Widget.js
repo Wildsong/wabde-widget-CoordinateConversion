@@ -34,7 +34,8 @@ define([
   'esri/symbols/PictureMarkerSymbol',
   'esri/symbols/SimpleMarkerSymbol',
   'jimu/utils',
-  'jimu/dijit/CoordinateControl'
+  'jimu/dijit/CoordinateControl',
+  "dojo/_base/kernel"
 ], function (
   dojoDeclare,
   _WidgetsInTemplateMixin,
@@ -54,7 +55,9 @@ define([
   EsriPictureMarkerSymbol,
   EsriSimpleMarkerSymbol,
   utils,
-  CoordinateControl
+  CoordinateControl,
+  kernel
+
 ) {
   'use strict';
   var cls = dojoDeclare([BaseWidget, _WidgetsInTemplateMixin], {
@@ -101,45 +104,56 @@ define([
         if (this.config.initialCoords) {
           dojoArray.forEach(this.config.initialCoords,
             dojoLang.hitch(this, function (tData) {
+              if (kernel.locale === "ar") {
+                if (tData.notation === 'DD' && tData.defaultFormat === "YN XE") {
+                  tData.defaultFormat = "NY EX";
+                }
+                if (tData.notation === 'DDM' && tData.defaultFormat === "A° B'N X° Y'E") {
+                  tData.defaultFormat = "N °A'B E °X'Y";
+                }
+                if (tData.notation === 'DMS' && tData.defaultFormat === "A° B' C\"N X° Y' Z\"E") {
+                  tData.defaultFormat = "N °A 'B \"C E °X 'Y \"Z";
+                }
+              }
               this.coordTypes.push(tData);
             }));
         } else {
           this.coordTypes = [{
-              notation: 'DD',
-              defaultFormat: "Y: N X: E"
-            },
-            {
-              notation: 'DDM',
-              defaultFormat: "A° B'N X° Y'E"
-            },
-            {
-              notation: 'DMS',
-              defaultFormat: "A° B' C\"N X° Y' Z\"E"
-            },
-            {
-              notation: 'GARS',
-              defaultFormat: "XYQK"
-            },
-            {
-              notation: 'GEOREF',
-              defaultFormat: "ABCDXY"
-            },
-            {
-              notation: 'MGRS',
-              defaultFormat: "ZSXY"
-            },
-            {
-              notation: 'USNG',
-              defaultFormat: "ZSXY"
-            },
-            {
-              notation: 'UTM',
-              defaultFormat: "ZH X Y"
-            },
-            {
-              notation: 'UTM_H',
-              defaultFormat: "ZH X Y"
-            }
+            notation: 'DD',
+            defaultFormat: kernel.locale === "ar" ? "N: Y E: X" : "Y: N X: E"
+          },
+          {
+            notation: 'DDM',
+            defaultFormat: kernel.locale === "ar" ? "N °A'B E °X'Y" : "A° B'N X° Y'E"
+          },
+          {
+            notation: 'DMS',
+            defaultFormat: kernel.locale === "ar" ? "N °A 'B \"C E °X 'Y \"Z" : "A° B' C\"N X° Y' Z\"E"
+          },
+          {
+            notation: 'GARS',
+            defaultFormat: "XYQK"
+          },
+          {
+            notation: 'GEOREF',
+            defaultFormat: "ABCDXY"
+          },
+          {
+            notation: 'MGRS',
+            defaultFormat: "ZSXY"
+          },
+          {
+            notation: 'USNG',
+            defaultFormat: "ZSXY"
+          },
+          {
+            notation: 'UTM',
+            defaultFormat: "ZH X Y"
+          },
+          {
+            notation: 'UTM_H',
+            defaultFormat: "ZH X Y"
+          }
           ];
         }
       }
@@ -177,7 +191,7 @@ define([
     addOutputSrBtn: function (withType) {
       if (!withType) {
         withType.notation = 'DD';
-        withType.defaultFormat = 'YN XE';
+        withType.defaultFormat = kernel.locale === "ar" ? "NY XE" : 'YN XE';
       }
 
       var cc = new CoordinateControl({
@@ -221,13 +235,36 @@ define([
      *
      **/
     startup: function () {
+      var defaultFormat;
+      if (kernel.locale === "ar") {
+        //For backward
+        if (!this.config.hasOwnProperty("inputNotation") && !this.config.hasOwnProperty("inputFormat")) {
+          defaultFormat = "NY EX";
+        }
+        //For new app
+        if (this.config.hasOwnProperty("inputNotation") && this.config.hasOwnProperty("inputFormat")) {
+          if (this.config.inputNotation === 'DD' && (this.config.inputFormat === "YN XE" ||
+            this.config.inputFormat === "")) {
+            this.config.inputFormat = "NY EX";
+          }
+          else if (this.config.inputNotation === 'DDM' && (this.config.inputFormat === "A° B'N X° Y'E" ||
+            this.config.inputFormat === "")) {
+            this.config.inputFormat = "N °A'B E °X'Y";
+          }
+          else if (this.config.inputNotation === 'DMS' && (this.config.inputFormat === "A° B' C\"N X° Y' Z\"E" ||
+            this.config.inputFormat === "")) {
+            this.config.inputFormat = "N °A 'B \"C E °X 'Y \"Z";
+          }
+        }
+      }
+
       this.inputControl = new CoordinateControl({
         parentWidget: this,
         label: this.nls.inputLabel,
         input: true,
         showCopyButton: true,
         type: this.config.hasOwnProperty("inputNotation") ? this.config.inputNotation : "DD",
-        defaultFormat: this.config.hasOwnProperty("inputFormat") ? this.config.inputFormat : "YN XE",
+        defaultFormat: this.config.hasOwnProperty("inputFormat") ? this.config.inputFormat : defaultFormat,
         showFormatButton: true,
         showDrawPoint: true,
         drawButtonLabel: this.nls.addPointLabel,
@@ -261,6 +298,23 @@ define([
       var nl = dojoQuery("span[title=" + this.nls.copyToClipboard + "]", this.inputControl.domNode);
       if (nl.length > 0) {
         nl[0].title = this.nls.copyAll;
+      }
+
+      //If rtl mode and locale is not arabic than add css to textarea
+      if (kernel.locale !== "ar" && window.isRTL) {
+        var textAreaNodes = dojoQuery("textArea", this.outputtablecontainer);
+        dojoArray.forEach(textAreaNodes, dojoLang.hitch(this, function (textAreaNode) {
+          dojoDomStyle.set(textAreaNode, "direction", "ltr");
+          dojoDomStyle.set(textAreaNode, "text-align", "right");
+        }));
+      }
+      //If rtl mode add css to lat-long input boxes
+      if (window.isRTL) {
+        var inputNodes = dojoQuery(".jimu-input.crds", this.outputtablecontainer);
+        dojoArray.forEach(inputNodes, dojoLang.hitch(this, function (inputNode) {
+          dojoDomStyle.set(inputNode, "direction", "ltr");
+          dojoDomStyle.set(inputNode, "text-align", "right");
+        }));
       }
     },
 

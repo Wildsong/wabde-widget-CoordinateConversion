@@ -138,6 +138,10 @@
   vertical-align: text-top;
 }
 
+.jimu-rtl .jimu-widget-cw .expandBtn {
+  transform: rotate(180deg);
+}
+
 .jimu-widget-cw .expandBtn:hover {
   background: url('../images/arrow-right_black_hover.png');
 }
